@@ -55,8 +55,6 @@ def adjust_response_length(response: str, user_message_length: int, adjustment_f
     print(
         f"User Message Length: {user_message_length}, Max Length: {max_length}, Response Length: {len(response)}"
     )
-    if len(response) > max_length:
-        response = response[:max_length].rstrip() + "…"  # 長すぎる場合は省略
     return response
 
 
