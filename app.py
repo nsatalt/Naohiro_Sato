@@ -55,17 +55,19 @@ def adjust_response_length(response: str, user_message_length: int, adjustment_f
     print(
         f"User Message Length: {user_message_length}, Max Length: {max_length}, Response Length: {len(response)}"
     )
+    if len(response) > max_length:
+        response = response[:max_length].rstrip() + "…"  # 長すぎる場合は省略
     return response
 
 
-def add_grandma_tone(response: str) -> str:
+def add_emojis(response: str) -> str:
     """
-    応答におばあちゃんらしい語尾を追加
+    応答に絵文字を追加
     """
-    endings = ["じゃよ", "ねぇ", "かい？", "だねぇ"]
-    if not response.endswith(tuple(endings)):
-        response += " " + random.choice(endings)
-    return response
+    emojis = ["😊", "✨", "🍵", "🌸", "🥰", "☀️", "🐾", "🎉", "🍀"]
+    num_emojis = random.randint(1, 3)  # 応答に追加する絵文字の数
+    added_emojis = " ".join(random.choices(emojis, k=num_emojis))
+    return f"{response} {added_emojis}"
 
 
 def chat_completion(user_content: str) -> str:
@@ -83,7 +85,7 @@ def chat_completion(user_content: str) -> str:
             max_tokens=50,
             temperature=0.5,
         )
-        raw_response = completion["choices"][0]["message"]["content"]  # 正しいアクセス形式を使用
+        raw_response = completion["choices"][0]["message"]["content"]
         print("Raw response from OpenAI API:", raw_response)
 
         # ユーザーのメッセージ文字数に応じて応答を調整
@@ -91,8 +93,8 @@ def chat_completion(user_content: str) -> str:
         adjustment_factor = float(os.getenv("ADJUSTMENT_FACTOR", 1.0))
         adjusted_response = adjust_response_length(raw_response, user_message_length, adjustment_factor)
 
-        # 自然な語尾を追加
-        final_response = add_grandma_tone(adjusted_response)
+        # 絵文字を追加
+        final_response = add_emojis(adjusted_response)
         print("Final response:", final_response)
         return final_response
     except Exception as e:
