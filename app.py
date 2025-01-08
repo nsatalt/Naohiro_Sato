@@ -64,8 +64,9 @@ def chat_completion(user_content):
     OpenAI を利用して応答を生成し、文字数を調整
     """
     try:
+        # 新しいAPI形式に対応
         completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",  # または "gpt-4"
             messages=[
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content},
@@ -77,9 +78,7 @@ def chat_completion(user_content):
 
         # ユーザーのメッセージ文字数に応じて応答を調整
         user_message_length = len(user_content)
-        adjustment_factor = float(
-            os.getenv("ADJUSTMENT_FACTOR", 1.0)
-        )  # デフォルトは1倍（入力とほぼ同じ長さ）
+        adjustment_factor = float(os.getenv("ADJUSTMENT_FACTOR", 1.0))  # 応答の長さ倍率（デフォルトは1倍）
         adjusted_response = adjust_response_length(raw_response, user_message_length, adjustment_factor)
 
         return adjusted_response
