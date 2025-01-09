@@ -1,5 +1,4 @@
 import os
-import random
 from flask import Flask, request, abort
 from linebot import LineBotApi
 from linebot import WebhookHandler
@@ -47,30 +46,37 @@ def callback():
     return "OK"
 
 
-def adjust_response_length(response: str, user_message_length: int, adjustment_factor: float = 1.2) -> str:
+def add_emojis_based_on_content(response: str) -> str:
     """
-    ユーザーのメッセージの長さに応じて返信の文字数を調整
+    応答内容に応じて適切な絵文字を追加
     """
-    max_length = int(user_message_length * adjustment_factor)
-    print(
-        f"User Message Length: {user_message_length}, Max Length: {max_length}, Response Length: {len(response)}"
-    )
+    emoji_map = {
+        "お風呂": "🛁",
+        "ご飯": "🍚",
+        "天気": "🌤️",
+        "猫": "🐱",
+        "犬": "🐶",
+        "散歩": "🚶‍♀️",
+        "疲れた": "😴",
+        "楽しい": "😊",
+        "ありがとう": "🙏",
+        "好き": "❤️",
+    }
+
+    added_emojis = []
+    for keyword, emoji in emoji_map.items():
+        if keyword in response:
+            added_emojis.append(emoji)
+
+    # 応答の最後に絵文字を追加（重複を避ける）
+    if added_emojis:
+        response += " " + " ".join(set(added_emojis))
     return response
-
-
-def add_emojis(response: str) -> str:
-    """
-    応答に絵文字を追加
-    """
-    emojis = ["😊", "✨", "🍵", "🌸", "🥰", "☀️", "🐾", "🎉", "🍀"]
-    num_emojis = random.randint(1, 3)  # 応答に追加する絵文字の数
-    added_emojis = " ".join(random.choices(emojis, k=num_emojis))
-    return f"{response} {added_emojis}"
 
 
 def chat_completion(user_content: str) -> str:
     """
-    OpenAI を利用して応答を生成し、文字数を調整
+    OpenAI を利用して応答を生成し、絵文字を追加
     """
     try:
         print("Calling OpenAI API with user content:", user_content)
@@ -80,19 +86,14 @@ def chat_completion(user_content: str) -> str:
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content},
             ],
-            max_tokens=50,
-            temperature=0.5,
+            max_tokens=200,
+            temperature=0.8,
         )
         raw_response = completion["choices"][0]["message"]["content"]
         print("Raw response from OpenAI API:", raw_response)
 
-        # ユーザーのメッセージ文字数に応じて応答を調整
-        user_message_length = len(user_content)
-        adjustment_factor = float(os.getenv("ADJUSTMENT_FACTOR", 1.0))
-        adjusted_response = adjust_response_length(raw_response, user_message_length, adjustment_factor)
-
-        # 絵文字を追加
-        final_response = add_emojis(adjusted_response)
+        # 内容に応じて絵文字を追加
+        final_response = add_emojis_based_on_content(raw_response)
         print("Final response:", final_response)
         return final_response
     except Exception as e:
