@@ -6,6 +6,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from dotenv import load_dotenv
 import openai
+import random
 
 # .env ファイルの読み込み
 load_dotenv(override=True)
@@ -25,6 +26,10 @@ openai.api_key = api_key
 system_content = os.getenv("CHATGPT_SYSTEM_CONTENT")
 if not system_content:
     raise ValueError("環境変数 'CHATGPT_SYSTEM_CONTENT' が設定されていません。")
+
+# 子育て相談モードの有効化
+consultation_mode_enabled = os.getenv("CONSULTATION_MODE_ENABLED", "false").lower() == "true"
+consultation_topics = os.getenv("CONSULTATION_TOPICS", "").split(",")
 
 
 @app.route("/")
@@ -61,6 +66,8 @@ def add_emojis_based_on_content(response: str) -> str:
         "楽しい": "😊",
         "ありがとう": "🙏",
         "好き": "❤️",
+        "子育て": "👶",
+        "悩み": "💭",
     }
 
     added_emojis = []
@@ -74,19 +81,42 @@ def add_emojis_based_on_content(response: str) -> str:
     return response
 
 
+def determine_consultation_mode(user_content: str) -> bool:
+    """
+    子育て相談モードを判定
+    """
+    if consultation_mode_enabled:
+        for topic in consultation_topics:
+            if topic.strip() in user_content:
+                return True
+    return False
+
+
 def chat_completion(user_content: str) -> str:
     """
     OpenAI を利用して応答を生成し、絵文字を追加
     """
     try:
-        print("Calling OpenAI API with user content:", user_content)
+        is_consultation = determine_consultation_mode(user_content)
+
+        # 相談モードの場合、詳細な応答を要求
+        consultation_prompt = (
+            "以下は、子育てや悩み相談に対して親身で具体的な応答をするモードです。" if is_consultation else ""
+        )
+
+        messages = [
+            {"role": "system", "content": system_content},
+            {"role": "system", "content": consultation_prompt} if is_consultation else {},
+            {"role": "user", "content": user_content},
+        ]
+
+        # 不要な空白メッセージを除去
+        messages = [msg for msg in messages if msg]
+
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": user_content},
-            ],
-            max_tokens=200,
+            messages=messages,
+            max_tokens=500 if is_consultation else 200,  # 子育て相談モードの場合トークン数を増加
             temperature=0.8,
         )
         raw_response = completion["choices"][0]["message"]["content"]
